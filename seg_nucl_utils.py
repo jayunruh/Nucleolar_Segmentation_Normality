@@ -48,7 +48,7 @@ def segmentNuclei(dapiimg,rollballrad=100,smstdev=5,nucthresh=0.1,minsize=1000,m
     '''
     segment the nuclei and return preprocessed, unfiltered mask,filtered labels and number of nuclei
     '''
-    dapisub=poorMansRollingBall(dapiimg)
+    dapisub=poorMansRollingBall(dapiimg,rollballrad=rollballrad,smstdev=smstdev)
     #threshold at fraction of max
     dapimask=dapisub>(nucthresh*dapisub.max())
     #eliminate the edge objects and label them
@@ -58,17 +58,17 @@ def segmentNuclei(dapiimg,rollballrad=100,smstdev=5,nucthresh=0.1,minsize=1000,m
     return dapisub,dapimask,dapilabels,nnuclei
 
 def segmentNucleoli(nuclimg,thirdimg,dapilabels,nnuclei,
-                    rollballrad=15.0,rbsigma=1.0,sigma=0.7,nuclthresh=0.4):
+                    rollballrad=15.0,rbsigma=1.0,sigma=0.7,nuclthresh=0.4,minnuclsize=4):
     '''
     segment the nucleoli and return preprocessed, preprocessed third, labeled, and nnuceoli
     note that "third" is a third image (not nuceoli or nuclei) that needs measured
     '''
     #start with background subtraction
-    nucleolisub=poorMansRollingBall(nuclimg,rollballrad=15.0,smstdev=1.0)
-    thirdsub=poorMansRollingBall(thirdimg,rollballrad=15.0,smstdev=1.0)
+    nucleolisub=poorMansRollingBall(nuclimg,rollballrad=rollballrad,smstdev=rbsigma)
+    thirdsub=poorMansRollingBall(thirdimg,rollballrad=rollballrad,smstdev=rbsigma)
     #and a filter
-    nucleoli=ndi.gaussian_filter(nucleolisub,sigma=0.7)
-    third=ndi.gaussian_filter(thirdsub,sigma=0.7)
+    nucleoli=ndi.gaussian_filter(nucleolisub,sigma=sigma)
+    third=ndi.gaussian_filter(thirdsub,sigma=sigma)
     #get the min and max values for each nucleus
     minvals=ndi.minimum(nucleoli,labels=dapilabels,index=range(1,nnuclei+1))
     maxvals=ndi.maximum(nucleoli,labels=dapilabels,index=range(1,nnuclei+1))
@@ -82,7 +82,7 @@ def segmentNucleoli(nuclimg,thirdimg,dapilabels,nnuclei,
     nucleolimask[threshlevels==0.0]=0
     nucleolilabels,nnucleoli=ndi.label(nucleolimask,structure=fs)
     #finally filter out the small nucleoli
-    nucleolilabels,nnucleoli=filterObjects(nucleolilabels,nnucleoli,minsize=4,fillholes=False)
+    nucleolilabels,nnucleoli=filterObjects(nucleolilabels,nnucleoli,minsize=minnuclsize,fillholes=False)
     return nucleoli,third,nucleolilabels,nnucleoli
 
 def measureAll(dapilabels,nnuclei,nucleolilabels,nnucleoli,nucleoli,third):
